@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cek Suspect LCR - AHASS</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f4f5f7;--card:#fff;--tx:#1b1d21;--mut:#6b7280;--bd:#e3e5ea;--red:#c8102e;--redbg:#fdecee;--grn:#127a3d;--grnbg:#e6f6ec;--acc:#c8102e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121316;--card:#1c1e23;--tx:#eceef2;--mut:#9aa1ad;--bd:#2d3037;--redbg:#3a1a1f;--grnbg:#14301f;--red:#ff5a6e;--grn:#4fd17f}}
+:root[data-theme="dark"]{--bg:#121316;--card:#1c1e23;--tx:#eceef2;--mut:#9aa1ad;--bd:#2d3037;--redbg:#3a1a1f;--grnbg:#14301f;--red:#ff5a6e;--grn:#4fd17f}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{background:#c8102e;color:#fff;padding:18px 20px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+header h1{margin:0;font-size:20px}header p{margin:4px 0 0;font-size:13px;opacity:.9}
+#gear{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer;display:none;white-space:nowrap}
+main{max-width:760px;margin:0 auto;padding:18px;display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:18px}
+h2{margin:0 0 12px;font-size:15px}
+.up{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.drop{border:2px dashed var(--bd);border-radius:10px;padding:16px;text-align:center;color:var(--mut);cursor:pointer;font-size:14px}
+.drop:hover{border-color:var(--acc);color:var(--tx)}
+.drop b{display:block;color:var(--tx);font-size:16px;margin-bottom:4px}
+.drop small{display:block;margin-top:6px}
+.info{margin-top:12px;font-size:13px;color:var(--mut)}
+details.dd summary{list-style:none;cursor:pointer;padding:12px 14px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);font-size:15px;font-weight:600;display:flex;justify-content:space-between}
+details.dd summary::-webkit-details-marker{display:none}
+details.dd summary::after{content:'▾'}
+details.dd[open] summary::after{content:'▴'}
+.ddm{margin-top:10px;display:grid;gap:10px}
+select{width:100%;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:16px}
+input[type=text]{width:100%;padding:14px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);font-size:18px;letter-spacing:1px;text-transform:uppercase}
+.row{display:flex;gap:10px}
+button.go{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:0 22px;font-size:15px;font-weight:600;cursor:pointer}
+.res{border-radius:12px;padding:20px;display:none}
+.res.bad{display:block;background:var(--grnbg);border:2px solid var(--grn)}
+.res.ok{display:block;background:var(--grnbg);border:2px solid var(--grn)}
+.res.nf{display:block;background:var(--bg);border:2px solid var(--bd)}
+.res .t{font-size:20px;font-weight:700}
+.bad .t{color:var(--grn)}
+.no .t{color:var(--red)}
+.res.no{display:block;background:var(--card);border:2px solid var(--red)}
+.res dl{margin:14px 0 0;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:16px}
+dt{color:var(--mut)}dd{margin:0;font-weight:600}
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;background:var(--grn);color:#fff;font-size:14px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+<div><h1>Cek Suspect LCR</h1><p>Dashboard pengecekan nomor rangka untuk AHASS</p></div>
+<button id="gear">⚙ Upload Data (Main Dealer)</button>
+</header>
+<main>
+<section class="card hide" id="admin">
+<h2>Upload Data Excel — Main Dealer</h2>
+<details class="dd" id="dd"><summary>Pilih Upload Data Excel (D3Z / D2Z)</summary>
+<div class="ddm">
+<div class="drop" data-k="d3z"><b>Upload Excel D3Z (Unit Batam)</b>Klik untuk pilih file Excel (.xlsx / .xls / .csv)<input type="file" accept=".xlsx,.xls,.csv" class="hide"></div>
+<div class="drop" data-k="d2z"><b>Upload Excel D2Z (Unit Riau)</b>Klik untuk pilih file Excel (.xlsx / .xls / .csv)<input type="file" accept=".xlsx,.xls,.csv" class="hide"></div>
+</div></details>
+<div class="info"><div id="s_d3z"></div><div id="s_d2z"></div></div>
+<div class="info" id="upinfo">Mengunggah file baru akan menggantikan data lama pada kategori yang sama. Data tersimpan dan langsung bisa dicari oleh AHASS.</div>
+</section>
+<section class="card">
+<h2>Cek Nomor Rangka</h2>
+<div class="row"><input type="text" id="q" placeholder="Ketik nomor rangka..." autocomplete="off"><button class="go" id="go">Cek</button></div>
+<div class="info" id="dbinfo">Memuat data...</div>
+</section>
+<div class="res" id="res"></div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const norm=s=>String(s==null?'':s).toUpperCase().replace(/[\s\-_.]/g,'');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CFG={d3z:{label:'Unit Batam',name:'D3Z'},d2z:{label:'Unit Riau',name:'D2Z'}};
+const idx={d3z:new Map(),d2z:new Map()};
+let db=null,meta={},isAdmin=false,loaded=false;
+const CH=1500;
+
+function updInfo(){
+  const p=Object.keys(CFG).map(k=>{const m=meta[k];return m?`${CFG[k].name}: ${m.count.toLocaleString('id-ID')} data`:`${CFG[k].name}: belum ada data`});
+  $('dbinfo').textContent=loaded?p.join('  •  '):'Memuat data...';
+  Object.keys(CFG).forEach(k=>{const m=meta[k];if($('s_'+k))$('s_'+k).textContent=m?`${CFG[k].name}: ✔ ${m.file} (${m.count.toLocaleString('id-ID')} data)`:CFG[k].name+': belum ada data'});
+}
+async function loadKey(k){
+  idx[k]=new Map();
+  const snap=await db.collection(k).get();
+  snap.docs.forEach(d=>{(d.data().rows||[]).forEach(r=>{const key=norm(r[0]);if(key&&!idx[k].has(key))idx[k].set(key,r)})});
+}
+async function loadAll(){
+  try{
+    const m=await db.doc('meta/info').get();
+    meta=m.exists?m.data():{};
+    await Promise.all(Object.keys(CFG).map(loadKey));
+  }catch(e){$('dbinfo').textContent='Gagal memuat data: '+(e.message||e.code)}
+  loaded=true;updInfo();
+}
+function guess(h,keys){
+  const n=h.map(x=>x.toLowerCase().replace(/[^a-z]/g,''));
+  for(const k of keys){const i=n.findIndex(x=>x.includes(k));if(i>=0)return h[i]}
+  return null;
+}
+async function upload(k,f){
+  const s=$('s_'+k);
+  s.textContent='Membaca file...';
+  try{
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:'array'});
+    let all=[];wb.SheetNames.forEach(n=>{all=all.concat(XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:''}))});
+    if(!all.length){s.textContent='File kosong.';return}
+    const h=Object.keys(all[0]);
+    const cR=guess(h,['norangka','nomorrangka','rangka','norang','vin','frame','chassis'])||h[0];
+    const cT=guess(h,['tipe','type','model','motor','varian','nama']);
+    const cY=guess(h,['tahunproduksi','tahun','thn','year','prod']);
+    const rows=[];const seen=new Set();
+    all.forEach(r=>{const key=norm(r[cR]);if(!key||seen.has(key))return;seen.add(key);rows.push([String(r[cR]).trim(),cT?String(r[cT]):'',cY?String(r[cY]):''])});
+    s.textContent='Menyimpan '+rows.length.toLocaleString('id-ID')+' data...';
+    const old=await db.collection(k).get();
+    for(const d of old.docs)await db.doc(k+'/'+d.id).delete();
+    for(let i=0;i<rows.length;i+=CH){
+      await db.doc(k+'/c'+String(i/CH).padStart(4,'0')).set({rows:rows.slice(i,i+CH)});
+      s.textContent='Menyimpan... '+Math.min(i+CH,rows.length).toLocaleString('id-ID')+'/'+rows.length.toLocaleString('id-ID');
+    }
+    meta[k]={file:f.name,count:rows.length,at:new Date().toISOString()};
+    await db.doc('meta/info').set(meta);
+    await loadKey(k);updInfo();
+    $('upinfo').textContent=`✔ ${CFG[k].name} berhasil diperbarui. Kolom terbaca → Rangka: "${cR}", Type: "${cT||'-'}", Tahun: "${cY||'-'}".`;
+  }catch(e){s.textContent='Gagal: '+(e.message||e.code||e)}
+}
+function check(){
+  const raw=$('q').value.trim(),k=norm(raw),el=$('res');
+  if(!k){el.className='res';return}
+  if(!loaded||!db){el.className='res nf';el.innerHTML='<div class="t">Data belum tersedia.</div>';return}
+  const hits=Object.keys(CFG).filter(c=>idx[c].has(k));
+  if(hits.length){
+    const r=idx[hits[0]].get(k);
+    const lokasi=hits.map(c=>`<span class="badge">${CFG[c].label}</span>`).join(' ');
+    const src=hits.map(c=>CFG[c].name).join(' & ');
+    el.className='res bad';
+    el.innerHTML=`<div class="t">✔ Nomor Rangka ini adalah Suspect LCR</div>
+    <dl><dt>Nomor Rangka</dt><dd>${esc(raw.toUpperCase())}</dd>
+    <dt>Type Motor</dt><dd>${esc(r[1]||'-')}</dd>
+    <dt>Tahun Produksi</dt><dd>${esc(r[2]||'-')}</dd>
+    <dt>Asal Unit</dt><dd>${lokasi}</dd>
+    <dt>Sumber Data</dt><dd>${src}</dd></dl>`;
+  }else{
+    el.className='res no';
+    el.innerHTML=`<div class="t">Bukan Suspect LCR</div><dl><dt>Nomor Rangka</dt><dd>${esc(raw.toUpperCase())}</dd></dl>`;
+  }
+}
+$('go').onclick=check;
+$('q').addEventListener('keydown',e=>{if(e.key==='Enter')check()});
+document.querySelectorAll('.drop').forEach(d=>{
+  const inp=d.querySelector('input');
+  d.onclick=e=>{if(e.target!==inp)inp.click()};
+  inp.onchange=()=>{if(inp.files[0])upload(d.dataset.k,inp.files[0]);inp.value=''};
+});
+$('gear').onclick=()=>$('admin').classList.toggle('hide');
+
+(async()=>{
+  try{
+    db=await claude.use('db');
+    const user=await claude.use('user');
+    if(!db){$('dbinfo').textContent='Data tidak dapat dimuat. Pastikan Anda sudah login ke Claude dan diberi akses ke halaman ini.';return}
+    try{isAdmin=user?await user.canEdit():false}catch(e){}
+    if(isAdmin){$('gear').style.display='block'}
+    await loadAll();
+  }catch(e){$('dbinfo').textContent='Gagal memuat: '+(e.message||e)}
+})();
+</script>
+</body>
+</html>
